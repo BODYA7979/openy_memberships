@@ -95,15 +95,15 @@ class OpenyMemberships extends ControllerBase {
    * @param \Drupal\openy_memberships\OmPDFGenerator $pdf_generator
    */
   public function __construct(
-      QueryFactory $entity_query,
-      EntityTypeManagerInterface $entity_type_manager,
-      ConfigFactoryInterface $config_factory,
-      CartProviderInterface $cart_provider,
-      AccountProxyInterface $current_user,
-      RendererInterface $renderer,
-      MailManagerInterface $mail_manager,
-      OmPDFGenerator $pdf_generator
-    ) {
+    QueryFactory $entity_query,
+    EntityTypeManagerInterface $entity_type_manager,
+    ConfigFactoryInterface $config_factory,
+    CartProviderInterface $cart_provider,
+    AccountProxyInterface $current_user,
+    RendererInterface $renderer,
+    MailManagerInterface $mail_manager,
+    OmPDFGenerator $pdf_generator
+  ) {
     $this->entityQuery = $entity_query;
     $this->entityTypeManager = $entity_type_manager;
     $this->configFactory = $config_factory;
@@ -281,9 +281,24 @@ class OpenyMemberships extends ControllerBase {
           continue;
         }
         $group = explode('_', $agesGroup);
+        if ($group[1] && $group[1] !== 'false') {
+          $group[1] = 1;
+        }
+        else {
+          $group[1] = 0;
+        }
         $agesGroups[$group[0]] = $group[1];
       }
     }
+
+    $allAgesSelected = TRUE;
+    foreach ($agesGroups as $key => $selected) {
+      if (!$selected) {
+        $allAgesSelected = FALSE;
+      }
+    }
+
+
     $storage = $this->entityTypeManager->getStorage('commerce_product');
     $query = $storage->getQuery();
     // Filter products by provided Ages Groups first.
@@ -301,6 +316,8 @@ class OpenyMemberships extends ControllerBase {
         $filter_product = FALSE;
         $field_om_total_available = $product->field_om_total_available->getValue();
         $ages_data = $agesGroups;
+
+        // Filter based on age groups added to product.
         foreach ($field_om_total_available as $value) {
           $requsted_quantity = $ages_data[$value['target_id']];
           $total_available = $value['quantity'];
@@ -309,7 +326,21 @@ class OpenyMemberships extends ControllerBase {
           if ($total_available < $requsted_quantity) {
             $filter_product = TRUE;
           }
+
+          unset($ages_data[$value['target_id']]);
         }
+
+        // Filter out age groups not attached to product if we haven't selected everything.
+        if (!empty($ages_data) && !$allAgesSelected) {
+          foreach($ages_data as $tid => $amount) {
+            if ($amount == 1) {
+              // The user has made a selection that does not exist on the product.
+              $filter_product = TRUE;
+            }
+          }
+        }
+
+
         if (!$filter_product) {
           $products[$product->uuid()] = [
             'uuid' => $product->uuid(),
@@ -323,19 +354,85 @@ class OpenyMemberships extends ControllerBase {
             ] : NULL,
             'variations' => [],
           ];
+
+          // Find the best value if not assigned.
+          $hasBest = FALSE;
+          $bestID = NULL;
+          $biggestVal = 0;
+          foreach($product->variations as $variant) {
+            if($variant->entity->field_best_value->value) {
+              $hasBest = TRUE;
+            }
+
+            $amount = $variant->entity->getPrice()->toArray()['number'];
+            $period = $this->getVariantPeriod($variant);
+
+            if ($period == 'mo') {
+              $value = $amount * 12;
+            }
+            else if ($period == 'year') {
+              $value = $amount;
+            }
+
+            if ($value > $biggestVal) {
+              $bestID = $variant->entity->id();
+            }
+          }
+
           foreach ($product->variations as $variant) {
+
+            $period = "";
+            $title = strtolower($variant->entity->getTitle());
+            if(strpos($title, 'month') !== FALSE) {
+              $period = "/ mo";
+            }
+            else if(strpos($title, 'annual') !== FALSE) {
+              $period = "/ year";
+            }
+
+            $bestFlag = $variant->entity->field_best_value->value;
+            if (!$hasBest) {
+              if ($variant->entity->id() == $bestID) {
+                $bestFlag = TRUE;
+              }
+            }
+
             $products[$product->uuid()]['variations'][] = [
               'uuid' => $variant->entity->uuid(),
               'id' => $variant->entity->id(),
               'price' => $variant->entity->getPrice()->toArray()['number'],
-              'field_best_value' => $variant->entity->field_best_value->value,
+              'field_best_value' => $bestFlag,
+              'package_id' => $variant->entity->field_mbrshp_package_id->value,
               'title' => $variant->entity->label(),
+              'period' => $period,
+              'activenetUrl' => $this->getActivenetUrl($variant->entity->field_mbrshp_package_id->value),
             ];
           }
         }
       }
     }
     return new JsonResponse($products);
+  }
+
+  public function getActivenetUrl($package_id = NULL) {
+    if($package_id) {
+      return 'https://apm.activecommunities.com/ymcala/Membership?package_id=' . $package_id;
+    }
+    else {
+      return 'https://apm.activecommunities.com/ymcala/Membership';
+    }
+  }
+
+  public function getVariantPeriod($variant) {
+    $period = "UNKNOWN";
+    $title = strtolower($variant->entity->getTitle());
+    if(strpos($title, 'month') !== FALSE) {
+      $period = "mo";
+    }
+    else if(strpos($title, 'annual') !== FALSE) {
+      $period = "year";
+    }
+    return $period;
   }
 
   /**
