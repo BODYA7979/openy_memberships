@@ -11,16 +11,13 @@
       <div class="product-title">
         <h2>{{product.title}}</h2>
       </div>
-      <div class="product-description">
-        <p v-html="product.field_description"></p>
-      </div>
       <div class="product-columns">
         <div>
           <div class="title">Purchase Options</div>
           <div class="options">
             <div class="branch">
               {{product.branch && product.branch.title}}
-              {{product.branch === null && 'All branches'}}
+              {{product.branch === null ? 'All branches' : ''}}
             </div>
             <v-select
               @input="updateProduct"
@@ -82,7 +79,7 @@
         </div>
       </div>
       <div>
-        <a class="select" @click="$emit('go-next')">JOIN NOW</a>
+        <a class="select" :href="productUrl">JOIN NOW</a>
       </div>
     </div>
   </section>
@@ -112,6 +109,10 @@ export default {
           value: index
         };
       });
+    },
+    productUrl() {
+      const packageId = this.product.variations[this.variant].package_id;
+      return `https://apm.activecommunities.com/ymcala/Membership?package_id=${packageId}`;
     }
   },
   data() {
@@ -124,21 +125,7 @@ export default {
     };
   },
   mounted() {
-    this.isLoading = true;
-
-    Cart.getSummary()
-      .then(json => {
-        this.discounts = json.discounts.filter(item => {
-          return item.title != null;
-        });
-        this.addons = json.addons;
-        this.total_price = json.total_price;
-        this.currency = json.currency;
-        this.isLoading = false;
-      })
-      .catch(() => {
-        this.isLoading = false;
-      });
+    this.total_price = this.product.variations && this.product.variations[this.variant] ? this.product.variations[this.variant].price : 'NaN';
   },
   components: {
     Loading,
@@ -150,47 +137,11 @@ export default {
     },
     updateProduct(variant) {
       let new_variant = variant;
-      this.isLoading = true;
-      Cart.getCart()
-        .then(json => {
-          if (json[0]) {
-            let order_id = json[0].order_id;
-
-            return Cart.createOrder(
-              this.product.variations[new_variant].id
-            ).then(() => {
-              let membership_items = json[0].order_items.filter(item => {
-                return item.purchased_entity.type == "membership";
-              });
-              if (membership_items.length) {
-                return Cart.removeItem(
-                  order_id,
-                  membership_items[0].order_item_id
-                );
-              }
-              return true;
-            });
-          }
-        })
-        .then(() => {
-          return Cart.getSummary();
-        })
-        .then(json => {
-          this.discounts = json.discounts.filter(item => {
-            return item.title != null;
-          });
-          this.$store.commit("setProduct", {
-            ...this.product,
-            variant: new_variant
-          });
-          this.addons = json.addons;
-          this.total_price = json.total_price;
-          this.currency = json.currency;
-          this.isLoading = false;
-        })
-        .catch(() => {
-          this.isLoading = false;
-        });
+      this.$store.commit("setProduct", {
+        ...this.product,
+        variant: new_variant
+      });
+      this.total_price = this.product.variations && this.product.variations[this.variant] ? this.product.variations[this.variant].price : 'NaN';
     },
     clearAddons() {
       this.isLoading = true;

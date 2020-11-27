@@ -1,14 +1,13 @@
 <template>
   <div class="product">
     <div class="product-title"><h2>{{product.title}}</h2></div>
-    <div class="product-description" v-html="product.field_description"></div>
     <div class="product-columns">
       <div>
         <div class="title">Purchase Options</div>
         <div class="options">
           <div class="branch">
             {{product.branch && product.branch.title}}
-            {{product.branch === null && 'All branches'}}
+            {{product.branch === null ? 'All branches' : ''}}
           </div>
 
           <v-select :reduce="data => data.value" :clearable="false" :searchable="false" v-model="variant" :options="variants"></v-select>
@@ -24,14 +23,12 @@
         <div class="options">
           <div class="item">
             <div class="price-title"><b>Dues</b></div>
-            <div class="price-value text-align-right"><b>${{ price | numFormat('0.00') }} / mo</b></div>
+            <div class="price-value text-align-right"><b>${{ price | numFormat('0.00') }} <span class="pay-period">{{ period }}</span></b></div>
           </div>
         </div>
       </div>
     </div>
-    <a @click="selectProduct" class="select">
-      SELECT
-    </a>
+    <a :href="getUrl" class="select">SELECT</a>
   </div>
 </template>
 <script>
@@ -59,6 +56,13 @@ export default {
     price() {
       let price = this.product.variations && this.product.variations[this.variant] ? this.product.variations[this.variant].price : 'NaN';
       return price
+    },
+    period() {
+      let period = this.product.variations && this.product.variations[this.variant] ? this.product.variations[this.variant].period : 'mo';
+      return period;
+    },
+    getUrl() {
+      return this.product.variations && this.product.variations[this.variant] ? this.product.variations[this.variant].activenetUrl : '';
     }
   },
   methods: {

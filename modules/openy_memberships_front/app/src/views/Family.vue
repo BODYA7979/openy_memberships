@@ -6,18 +6,21 @@
     </h1>
     <div class="description">
       <div class="description-text">
-        How many people will be included in your membership?
+        What age groups do you want included in your membership?
       </div>
     </div>
 
     <div class="family-wrapper">
       <div :key="index"  class="label-row" v-for="(group, index) in age_groups">
         <div class="label-row">
-          <div class="label">{{group.title}}</div><div class="value"><integer-minus-plus :value="$store.state.family[group.uuid].count" @input="updateFamily(group.uuid, $event)" /></div>
+          <label class="label" :for="group.uuid">{{ group.title }}</label>
+          <div class="value">
+            <input type="checkbox" @change="setTotal" :value="group.uuid" :id="group.uuid"  v-model="$store.state.family[group.uuid].count" />
+          </div>
         </div>
       </div>
     </div>
-    <div class="navigation" v-if="totalCount > 0">
+    <div class="navigation" v-if="totalCount">
       <div class="container">
         <button class="btn btn-next" @click="$emit('go-next')">Next</button>
       </div>
@@ -28,19 +31,19 @@
 <script>
 import Loading from "vue-loading-overlay";
 import "vue-loading-overlay/dist/vue-loading.css";
-import IntegerMinusPlus from '../components/IntegerMinusPlus'
 import Cart from '../helpers/Cart';
 export default {
   mounted() {
+
     this.isLoading = true;
     Cart.getAgeGroups().then(json => {
       let leave_items = {};
       this.age_groups = Object.keys(json).map((key) => {
         leave_items[json[key].uuid] = true;
-         this.$store.commit('setFamilyTerm', {
-            key: json[key].uuid,
-            value: key
-         })
+        this.$store.commit('setFamilyTerm', {
+          key: json[key].uuid,
+          value: key
+        })
         return {key: key, title: json[key].title, uuid: json[key].uuid};
       })
       Object.keys(this.$store.state.family).forEach((key) => {
@@ -54,21 +57,18 @@ export default {
     });
   },
   computed: {
-    totalCount() {
-      return this.$store.state.familyTotalCount;
-    },
     family() {
       return this.$store.state.family;
     }
   },
   components: {
-    IntegerMinusPlus,
     Loading
   },
   data () {
     return {
       isLoading: false,
       age_groups: [],
+      totalCount: this.getTotal(),
     }
   },
   methods: {
@@ -77,7 +77,21 @@ export default {
         key,
         value
       })
-    }
+    },
+    setTotal() {
+      let total = this.getTotal();
+      this.totalCount = total;
+    },
+    getTotal() {
+      let count = 0;
+      Object.keys(this.$store.state.family).forEach(element => {
+        let eCount = this.$store.state.family[element].count;
+        if(eCount) {
+          count = count + eCount;
+        }
+      });
+      return count;
+    },
   }
 }
 </script>

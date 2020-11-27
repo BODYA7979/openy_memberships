@@ -26,7 +26,7 @@
           <div class="options">
             <div class="branch">
               {{product.branch && product.branch.title}}
-              {{product.branch === null && 'All branches'}}
+              {{product.branch === null ? 'All branches' : ''}}
             </div>
             <div
               class="best-value"
@@ -123,7 +123,6 @@ export default {
       })
       .then((json) => {
         return Cart.sendSummaryEmails(json[0].uuid).then(() => {
-          return json;
         })
       })
       .then((json) => {

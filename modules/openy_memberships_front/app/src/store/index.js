@@ -7,7 +7,6 @@ export default {
       steps: defaultSteps,
       location: null,
       family: {},
-      familyTotalCount: 0,
       product: null,
       keepCart: true,
       members: [],

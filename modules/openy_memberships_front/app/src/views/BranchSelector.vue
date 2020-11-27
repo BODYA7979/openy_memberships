@@ -58,7 +58,9 @@ export default {
           address: attributes.field_location_address.locality + ', ' + attributes.field_location_address.administrative_area,
           value: attributes.drupal_internal__nid
         }
-      })
+      }).sort((lA, lB) => {
+        return (lA.name < lB.name) ? -1 : 1;
+      });
     }).catch(() => {
       this.isLoading = false
     })
