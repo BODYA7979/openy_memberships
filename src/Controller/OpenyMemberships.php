@@ -312,6 +312,10 @@ class OpenyMemberships extends ControllerBase {
     $products = [];
     foreach ($ids as $id) {
       $product = $storage->load($id);
+      // Remove product if it doesn't have variations.
+      if (!$product->hasVariations()) {
+        continue;
+      }
       if ($product) {
         $filter_product = FALSE;
         $field_om_total_available = $product->field_om_total_available->getValue();
