@@ -6,7 +6,7 @@
     </h1>
     <div class="description">
       <div class="description-text">
-        What age groups do you want included in your membership?
+        What type of membership would you like to purchase?
       </div>
     </div>
 

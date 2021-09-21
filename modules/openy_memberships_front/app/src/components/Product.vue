@@ -11,7 +11,7 @@
           </div>
 
           <v-select :reduce="data => data.value" :clearable="false" :searchable="false" v-model="variant" :options="variants"></v-select>
-          <div class="best-value" v-if="product.variations[variant].field_best_value == 1">Best value</div>
+<!--          <div class="best-value" v-if="product.variations[variant].field_best_value == 1">Best value</div>-->
         </div>
       </div>
       <div>
