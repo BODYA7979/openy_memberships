@@ -1,6 +1,6 @@
 <template>
   <div class="product">
-    <div class="product-title"><h2>{{product.title}}</h2></div>
+    <div class="product-title"><h2>{{product.title}}<span v-if="hasDisclaimer">*</span></h2></div>
     <div class="product-columns">
       <div>
         <div class="title">Purchase Options</div>
@@ -29,6 +29,7 @@
       </div>
     </div>
     <a :href="getUrl" class="select">SELECT</a>
+    <div class="disclaimer" v-if="hasDisclaimer">* {{ product.disclaimer }}</div>
   </div>
 </template>
 <script>
@@ -63,6 +64,9 @@ export default {
     },
     getUrl() {
       return this.product.variations && this.product.variations[this.variant] ? this.product.variations[this.variant].activenetUrl : '';
+    },
+    hasDisclaimer() {
+      return this.product.disclaimer.length > 0;
     }
   },
   methods: {

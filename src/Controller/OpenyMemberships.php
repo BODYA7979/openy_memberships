@@ -298,9 +298,10 @@ class OpenyMemberships extends ControllerBase {
       }
     }
 
-
-    $storage = $this->entityTypeManager->getStorage('commerce_product');
-    $query = $storage->getQuery();
+    /** @var \Drupal\taxonomy\TermStorageInterface $term_storage */
+    $term_storage = $this->entityTypeManager->getStorage('taxonomy_term');
+    $product_storage = $this->entityTypeManager->getStorage('commerce_product');
+    $query = $product_storage->getQuery();
     // Filter products by provided Ages Groups first.
     $orGroup = $query->orConditionGroup()
       ->condition('field_product_branch', NULL, 'IS NULL');
@@ -310,8 +311,16 @@ class OpenyMemberships extends ControllerBase {
     $query->condition($orGroup);
     $ids = $query->execute();
     $products = [];
+
+    // YMLA-88. Hardcode disclaimer for specific categories.
+    $disclaimer_categories_names = ['Adult'];
+    $d_categories = $term_storage->getQuery();
+    $d_categories->condition('vid', 'memberships_ages_groups');
+    $d_categories->condition('name', $disclaimer_categories_names, 'IN');
+    $d_categories = array_values($d_categories->execute());
+
     foreach ($ids as $id) {
-      $product = $storage->load($id);
+      $product = $product_storage->load($id);
       // Remove product if it doesn't have variations.
       if (!$product->hasVariations()) {
         continue;
@@ -357,7 +366,13 @@ class OpenyMemberships extends ControllerBase {
               'title' => $product->field_product_branch->entity->label(),
             ] : NULL,
             'variations' => [],
+            'disclaimer' => '',
           ];
+
+          $groups = array_column($product->get('field_om_total_available')->getValue(), 'target_id');
+          if (count(array_intersect($d_categories, $groups)) > 0) {
+            $products[$product->uuid()]['disclaimer'] = 'Young Adult (18-29) & Senior (65+) membership discounts are applied automatically at check out.';
+          }
 
           // Find the best value if not assigned.
           $hasBest = FALSE;
@@ -415,6 +430,7 @@ class OpenyMemberships extends ControllerBase {
         }
       }
     }
+
     return new JsonResponse($products);
   }
 
